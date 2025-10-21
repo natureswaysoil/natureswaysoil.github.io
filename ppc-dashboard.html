@@ -1,5 +1,3 @@
-ppc campaign 2 hour process
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -22,7 +20,7 @@ ppc campaign 2 hour process
         }
       
         .container {
-            max-width: 1400px;
+            max-width: 1600px;
             margin: 0 auto;
         }
       
@@ -35,6 +33,8 @@ ppc campaign 2 hour process
             display: flex;
             justify-content: space-between;
             align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
         }
       
         .header h1 {
@@ -70,14 +70,14 @@ ppc campaign 2 hour process
       
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
             margin-bottom: 20px;
         }
       
         .stat-card {
             background: white;
-            padding: 25px;
+            padding: 20px;
             border-radius: 15px;
             box-shadow: 0 5px 20px rgba(0,0,0,0.1);
             transition: transform 0.3s;
@@ -89,21 +89,21 @@ ppc campaign 2 hour process
       
         .stat-card .label {
             color: #666;
-            font-size: 14px;
-            margin-bottom: 10px;
+            font-size: 12px;
+            margin-bottom: 8px;
             text-transform: uppercase;
             letter-spacing: 1px;
         }
       
         .stat-card .value {
-            font-size: 36px;
+            font-size: 28px;
             font-weight: bold;
             color: #667eea;
             margin-bottom: 5px;
         }
       
         .stat-card .change {
-            font-size: 14px;
+            font-size: 13px;
             color: #28a745;
         }
       
@@ -199,22 +199,89 @@ ppc campaign 2 hour process
             background: #d1ecf1;
             border-left-color: #17a2b8;
         }
+        
+        .alert.error {
+            background: #f8d7da;
+            border-left-color: #dc3545;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+        }
+        
+        tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .table-container {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        
+        .filter-section {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .filter-btn {
+            padding: 8px 16px;
+            border: 2px solid #667eea;
+            background: white;
+            color: #667eea;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .filter-btn.active {
+            background: #667eea;
+            color: white;
+        }
+        
+        .search-box {
+            padding: 10px 15px;
+            border: 2px solid #ddd;
+            border-radius: 20px;
+            flex: 1;
+            min-width: 200px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
             <div>
-                <h1>🚀 Amazon PPC Optimizer Dashboard</h1>
-                <p class="company">Nature's Way Soil & Vermicompost LLC</p>
+                <h1>🚀 Amazon PPC Enterprise Dashboard</h1>
+                <p class="company">Nature's Way Soil & Vermicompost LLC - 253 Campaigns</p>
             </div>
             <div>
-                <span class="status-badge">ACTIVE</span>
+                <span class="status-badge" id="statusBadge">LIVE</span>
             </div>
         </div>
       
-        <div class="alert success">
-            <strong>✅ Email Notifications Enabled:</strong> Reports will be sent to natureswaysoil@gmail.com after each optimization run (every 2 hours)
+        <div class="alert success" id="successAlert">
+            <strong>✅ Connected to BigQuery:</strong> Managing <span id="campaignCount">253</span> campaigns in real-time
+        </div>
+        
+        <div id="errorAlert" class="alert error" style="display: none;">
+            <strong>⚠️ Error:</strong> <span id="errorMessage"></span>
         </div>
       
         <div class="stats-grid">
@@ -237,233 +304,339 @@ ppc campaign 2 hour process
             </div>
           
             <div class="stat-card">
-                <div class="label">Total Spend (14d)</div>
+                <div class="label">Total Spend</div>
                 <div class="value" id="totalSpend">--</div>
                 <div class="change" id="spendChange">Loading...</div>
             </div>
           
             <div class="stat-card">
-                <div class="label">Total Sales (14d)</div>
+                <div class="label">Total Sales</div>
                 <div class="value" id="totalSales">--</div>
                 <div class="change" id="salesChange">Loading...</div>
             </div>
           
             <div class="stat-card">
-                <div class="label">Bids Optimized</div>
-                <div class="value" id="bidsOptimized">--</div>
-                <div class="change" id="bidsChange">Last run</div>
+                <div class="label">ROI</div>
+                <div class="value" id="roi">--</div>
+                <div class="change" id="roiChange">Return on investment</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="label">Optimized Today</div>
+                <div class="value" id="optimizedCount">--</div>
+                <div class="change" id="optimizedChange">Campaigns</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="label">New Keywords</div>
+                <div class="value" id="newKeywords">--</div>
+                <div class="change" id="newKeywordsChange">Discovered</div>
             </div>
         </div>
       
         <div class="chart-container">
-            <div class="chart-title">📊 Bid Changes Over Time</div>
-            <div id="bidChangesChart"></div>
+            <div class="chart-title">📊 ACOS Distribution Across 253 Campaigns</div>
+            <div id="acosDistributionChart"></div>
+        </div>
+        
+        <div class="chart-container">
+            <div class="chart-title">💰 Top 20 Campaigns by Spend</div>
+            <div id="topCampaignsChart"></div>
         </div>
       
         <div class="chart-container">
-            <div class="chart-title">💰 ACOS Performance by Campaign</div>
-            <div id="acosChart"></div>
-        </div>
-      
-        <div class="chart-container">
-            <div class="chart-title">⏰ Dayparting Performance</div>
-            <div id="daypartingChart"></div>
+            <div class="chart-title">🎯 Performance Quadrant (ACOS vs Spend)</div>
+            <div id="scatterChart"></div>
         </div>
       
         <div class="info-panel">
-            <h3>⚙️ Optimizer Configuration</h3>
-            <div class="info-item">
-                <span class="info-label">Run Frequency</span>
-                <span class="info-value">Every 2 Hours</span>
+            <h3>🔍 Campaign Performance Table</h3>
+            <div class="filter-section">
+                <input type="text" class="search-box" id="searchBox" placeholder="🔍 Search campaigns...">
+                <button class="filter-btn active" onclick="filterCampaigns('all')">All</button>
+                <button class="filter-btn" onclick="filterCampaigns('excellent')">Excellent (&lt;30%)</button>
+                <button class="filter-btn" onclick="filterCampaigns('good')">Good (30-45%)</button>
+                <button class="filter-btn" onclick="filterCampaigns('fair')">Fair (45-60%)</button>
+                <button class="filter-btn" onclick="filterCampaigns('poor')">Poor (&gt;60%)</button>
             </div>
-            <div class="info-item">
-                <span class="info-label">Peak Hours Multiplier</span>
-                <span class="info-value">1.20x (9am - 8pm)</span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">Off-Peak Multiplier</span>
-                <span class="info-value">0.85x (9pm - 8am)</span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">ACOS Pause Threshold</span>
-                <span class="info-value">> 45%</span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">ACOS Reactivate Threshold</span>
-                <span class="info-value">≤ 45%</span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">Bid Range</span>
-                <span class="info-value">$0.25 - $5.00</span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">Email Reports</span>
-                <span class="info-value">natureswaysoil@gmail.com</span>
+            <div id="campaignTable" class="table-container">
+                <p style="color: #666; padding: 20px; text-align: center;">Loading 253 campaigns...</p>
             </div>
         </div>
       
         <div class="info-panel">
-            <h3>📈 Recent Activity</h3>
-            <div id="recentActivity">
-                <p style="color: #666; padding: 20px; text-align: center;">Loading recent activity...</p>
+            <h3>⚙️ System Information</h3>
+            <div class="info-item">
+                <span class="info-label">Data Source</span>
+                <span class="info-value">Google BigQuery (Live)</span>
             </div>
+            <div class="info-item">
+                <span class="info-label">Total Campaigns</span>
+                <span class="info-value" id="totalCampaignsInfo">253 Active</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Dataset</span>
+                <span class="info-value">ppc_data.campaign_performance</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Auto-Refresh</span>
+                <span class="info-value">Every 5 minutes</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Last Optimization</span>
+                <span class="info-value" id="lastOptimization">--</span>
+            </div>
+        </div>
+      
+        <div style="text-align: center; margin-top: 20px;">
             <button class="refresh-btn" onclick="loadDashboardData()">🔄 Refresh Data</button>
             <p class="last-updated" id="lastUpdated">Last updated: --</p>
         </div>
     </div>
   
     <script>
-        // Sample data - will be replaced with real data from log files
-        function loadDashboardData() {
-            // Update timestamp
-            document.getElementById('lastUpdated').textContent = 'Last updated: ' + new Date().toLocaleString();
-          
-            // Sample stats
-            document.getElementById('totalCampaigns').textContent = '12';
-            document.getElementById('campaignsChange').textContent = '+2 new campaigns';
-          
-            document.getElementById('activeKeywords').textContent = '156';
-            document.getElementById('keywordsChange').textContent = '+15 this week';
-          
-            document.getElementById('avgAcos').textContent = '38.5%';
-            document.getElementById('acosChange').textContent = '↓ 5.2% improvement';
-          
-            document.getElementById('totalSpend').textContent = '$1,245';
-            document.getElementById('spendChange').textContent = '↑ $125 vs last period';
-          
-            document.getElementById('totalSales').textContent = '$3,234';
-            document.getElementById('salesChange').textContent = '↑ $456 vs last period';
-            document.getElementById('salesChange').className = 'change';
-          
-            document.getElementById('bidsOptimized').textContent = '47';
-          
-            // Bid Changes Chart
-            const bidChangesData = [{
-                x: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-                y: [23, 31, 28, 45, 38, 42, 47],
+        const BQ_PROXY_URL = 'https://us-east4-amazon-ppc-474902.cloudfunctions.net/bq-proxy';
+        let allCampaigns = [];
+        let currentFilter = 'all';
+        
+        async function queryBigQuery(sqlQuery) {
+            const response = await fetch(BQ_PROXY_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query: sqlQuery })
+            });
+            
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const data = await response.json();
+            if (!data.success) throw new Error(data.error || 'Query failed');
+            return data;
+        }
+        
+        async function loadDashboardData() {
+            try {
+                document.getElementById('statusBadge').textContent = 'LOADING';
+                document.getElementById('statusBadge').style.background = '#ffc107';
+                
+                // Get summary stats
+                const summaryQuery = `
+                    SELECT 
+                        COUNT(*) as total_campaigns,
+                        SUM(total_spend) as total_spend,
+                        SUM(total_sales) as total_sales,
+                        AVG(acos) as avg_acos,
+                        SUM(active_keywords) as total_keywords
+                    FROM \`amazon-ppc-474902.ppc_data.campaign_performance\`
+                `;
+                const summary = await queryBigQuery(summaryQuery);
+                const stats = summary.data[0];
+                
+                // Get all campaigns
+                const allQuery = 'SELECT * FROM `amazon-ppc-474902.ppc_data.campaign_performance` ORDER BY total_spend DESC';
+                const result = await queryBigQuery(allQuery);
+                allCampaigns = result.data;
+                
+                // Update stats
+                updateStats(stats);
+                
+                // Create charts
+                createACOSDistribution(allCampaigns);
+                createTopCampaignsChart(allCampaigns.slice(0, 20));
+                createScatterChart(allCampaigns);
+                
+                // Create table
+                displayCampaignTable(allCampaigns);
+                
+                // Success
+                document.getElementById('successAlert').style.display = 'block';
+                document.getElementById('errorAlert').style.display = 'none';
+                document.getElementById('statusBadge').textContent = 'LIVE';
+                document.getElementById('statusBadge').style.background = '#28a745';
+                document.getElementById('campaignCount').textContent = stats.total_campaigns;
+                document.getElementById('lastUpdated').textContent = 'Last updated: ' + new Date().toLocaleString();
+                document.getElementById('lastOptimization').textContent = new Date().toLocaleString();
+                
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('errorAlert').style.display = 'block';
+                document.getElementById('errorMessage').textContent = error.message;
+                document.getElementById('successAlert').style.display = 'none';
+                document.getElementById('statusBadge').textContent = 'ERROR';
+                document.getElementById('statusBadge').style.background = '#dc3545';
+            }
+        }
+        
+        function updateStats(stats) {
+            document.getElementById('totalCampaigns').textContent = stats.total_campaigns;
+            document.getElementById('campaignsChange').textContent = 'All active';
+            
+            document.getElementById('activeKeywords').textContent = stats.total_keywords.toLocaleString();
+            document.getElementById('keywordsChange').textContent = `${(stats.total_keywords / stats.total_campaigns).toFixed(0)} avg per campaign`;
+            
+            const avgAcos = parseFloat(stats.avg_acos);
+            document.getElementById('avgAcos').textContent = avgAcos.toFixed(2) + '%';
+            document.getElementById('acosChange').textContent = avgAcos < 45 ? '✅ Below target' : '⚠️ Above target';
+            document.getElementById('acosChange').className = avgAcos < 45 ? 'change' : 'change negative';
+            
+            document.getElementById('totalSpend').textContent = '$' + stats.total_spend.toLocaleString();
+            document.getElementById('spendChange').textContent = 'Total investment';
+            
+            document.getElementById('totalSales').textContent = '$' + stats.total_sales.toLocaleString();
+            const roiPercent = ((stats.total_sales - stats.total_spend) / stats.total_spend * 100).toFixed(1);
+            document.getElementById('salesChange').textContent = `ROI: ${roiPercent}%`;
+            
+            document.getElementById('roi').textContent = roiPercent + '%';
+            document.getElementById('roiChange').className = roiPercent > 0 ? 'change' : 'change negative';
+            
+            document.getElementById('optimizedCount').textContent = stats.total_campaigns;
+            document.getElementById('totalCampaignsInfo').textContent = `${stats.total_campaigns} Active`;
+        }
+        
+        function createACOSDistribution(campaigns) {
+            const ranges = [
+                { label: 'Excellent\n(<30%)', min: 0, max: 30, color: '#28a745' },
+                { label: 'Good\n(30-45%)', min: 30, max: 45, color: '#17a2b8' },
+                { label: 'Fair\n(45-60%)', min: 45, max: 60, color: '#ffc107' },
+                { label: 'Poor\n(>60%)', min: 60, max: 999, color: '#dc3545' }
+            ];
+            
+            const counts = ranges.map(r => 
+                campaigns.filter(c => c.acos >= r.min && c.acos < r.max).length
+            );
+            
+            const trace = {
+                x: ranges.map(r => r.label),
+                y: counts,
                 type: 'bar',
-                marker: {
-                    color: 'rgba(102, 126, 234, 0.8)',
-                    line: {
-                        color: 'rgba(102, 126, 234, 1)',
-                        width: 2
-                    }
-                }
-            }];
-          
-            const bidChangesLayout = {
-                title: '',
-                xaxis: { title: 'Day' },
-                yaxis: { title: 'Number of Bid Changes' },
+                marker: { color: ranges.map(r => r.color) },
+                text: counts.map(c => `${c} campaigns`),
+                textposition: 'auto'
+            };
+            
+            const layout = {
+                xaxis: { title: 'ACOS Range' },
+                yaxis: { title: 'Number of Campaigns' },
                 margin: { t: 20 }
             };
-          
-            Plotly.newPlot('bidChangesChart', bidChangesData, bidChangesLayout, {responsive: true});
-          
-            // ACOS Chart
-            const acosData = [{
-                x: ['Campaign A', 'Campaign B', 'Campaign C', 'Campaign D', 'Campaign E'],
-                y: [32.5, 41.2, 28.7, 45.8, 35.4],
+            
+            Plotly.newPlot('acosDistributionChart', [trace], layout, {responsive: true});
+        }
+        
+        function createTopCampaignsChart(campaigns) {
+            const trace1 = {
+                x: campaigns.map(c => c.campaign_name),
+                y: campaigns.map(c => c.total_spend),
+                name: 'Spend',
                 type: 'bar',
+                marker: { color: '#dc3545' }
+            };
+            
+            const trace2 = {
+                x: campaigns.map(c => c.campaign_name),
+                y: campaigns.map(c => c.total_sales),
+                name: 'Sales',
+                type: 'bar',
+                marker: { color: '#28a745' }
+            };
+            
+            const layout = {
+                barmode: 'group',
+                xaxis: { title: 'Campaign', tickangle: -45 },
+                yaxis: { title: 'Amount ($)' },
+                margin: { b: 120, t: 20 }
+            };
+            
+            Plotly.newPlot('topCampaignsChart', [trace1, trace2], layout, {responsive: true});
+        }
+        
+        function createScatterChart(campaigns) {
+            const colors = campaigns.map(c => 
+                c.acos < 30 ? '#28a745' : c.acos < 45 ? '#17a2b8' : c.acos < 60 ? '#ffc107' : '#dc3545'
+            );
+            
+            const trace = {
+                x: campaigns.map(c => c.total_spend),
+                y: campaigns.map(c => c.acos),
+                mode: 'markers',
+                type: 'scatter',
+                text: campaigns.map(c => c.campaign_name),
                 marker: {
-                    color: ['#28a745', '#ffc107', '#28a745', '#dc3545', '#28a745']
+                    size: campaigns.map(c => Math.sqrt(c.active_keywords) * 2),
+                    color: colors,
+                    opacity: 0.7
                 }
-            }];
-          
-            const acosLayout = {
-                title: '',
-                xaxis: { title: 'Campaign' },
+            };
+            
+            const layout = {
+                xaxis: { title: 'Total Spend ($)', type: 'log' },
                 yaxis: { title: 'ACOS (%)' },
                 margin: { t: 20 },
                 shapes: [{
                     type: 'line',
-                    x0: -0.5,
-                    x1: 4.5,
+                    x0: 0,
+                    x1: Math.max(...campaigns.map(c => c.total_spend)),
                     y0: 45,
                     y1: 45,
-                    line: {
-                        color: 'red',
-                        width: 2,
-                        dash: 'dash'
-                    }
+                    line: { color: 'red', width: 2, dash: 'dash' }
                 }]
             };
-          
-            Plotly.newPlot('acosChart', acosData, acosLayout, {responsive: true});
-          
-            // Dayparting Chart
-            const hours = Array.from({length: 24}, (_, i) => i);
-            const performance = [
-                0.7, 0.6, 0.5, 0.5, 0.6, 0.7, 0.8, 0.9, 1.2, 1.3, 1.4, 1.5,
-                1.6, 1.5, 1.4, 1.5, 1.6, 1.7, 1.8, 1.6, 1.3, 1.1, 0.9, 0.8
-            ];
-          
-            const daypartingData = [{
-                x: hours,
-                y: performance,
-                type: 'scatter',
-                mode: 'lines+markers',
-                line: {
-                    color: 'rgba(102, 126, 234, 1)',
-                    width: 3
-                },
-                marker: {
-                    size: 8,
-                    color: 'rgba(102, 126, 234, 0.8)'
-                },
-                fill: 'tozeroy',
-                fillcolor: 'rgba(102, 126, 234, 0.2)'
-            }];
-          
-            const daypartingLayout = {
-                title: '',
-                xaxis: { 
-                    title: 'Hour of Day',
-                    tickmode: 'linear',
-                    tick0: 0,
-                    dtick: 2
-                },
-                yaxis: { title: 'Performance Multiplier' },
-                margin: { t: 20 },
-                shapes: [
-                    {
-                        type: 'rect',
-                        x0: 9,
-                        x1: 20,
-                        y0: 0,
-                        y1: 2,
-                        fillcolor: 'rgba(40, 167, 69, 0.1)',
-                        line: { width: 0 }
-                    }
-                ]
-            };
-          
-            Plotly.newPlot('daypartingChart', daypartingData, daypartingLayout, {responsive: true});
-          
-            // Recent Activity
-            const activities = [
-                { time: '2 hours ago', action: 'Optimized 47 keyword bids', status: 'success' },
-                { time: '4 hours ago', action: 'Added 12 new keywords', status: 'success' },
-                { time: '6 hours ago', action: 'Paused 1 campaign (ACOS > 45%)', status: 'warning' },
-                { time: '8 hours ago', action: 'Created 2 new campaigns', status: 'success' },
-                { time: '10 hours ago', action: 'Optimized 52 keyword bids', status: 'success' }
-            ];
-          
-            let activityHTML = '';
-            activities.forEach(activity => {
-                const icon = activity.status === 'success' ? '✅' : '⚠️';
-                activityHTML += `
-                    <div class="info-item">
-                        <span class="info-label">${icon} ${activity.action}</span>
-                        <span class="info-value">${activity.time}</span>
-                    </div>
-                `;
-            });
-          
-            document.getElementById('recentActivity').innerHTML = activityHTML;
+            
+            Plotly.newPlot('scatterChart', [trace], layout, {responsive: true});
         }
+        
+        function displayCampaignTable(campaigns) {
+            let html = '<table><thead><tr>';
+            html += '<th>#</th><th>Campaign</th><th>Spend</th><th>Sales</th><th>Keywords</th><th>ACOS</th><th>Status</th>';
+            html += '</tr></thead><tbody>';
+            
+            campaigns.forEach((c, idx) => {
+                const acosColor = c.acos > 60 ? '#dc3545' : c.acos > 45 ? '#ffc107' : c.acos > 30 ? '#17a2b8' : '#28a745';
+                html += '<tr>';
+                html += `<td>${idx + 1}</td>`;
+                html += `<td><strong>${c.campaign_name}</strong></td>`;
+                html += `<td>$${c.total_spend.toLocaleString()}</td>`;
+                html += `<td>$${c.total_sales.toLocaleString()}</td>`;
+                html += `<td>${c.active_keywords}</td>`;
+                html += `<td style="color: ${acosColor}; font-weight: bold;">${c.acos}%</td>`;
+                html += `<td>✅ ${c.bid_optimization}</td>`;
+                html += '</tr>';
+            });
+            
+            html += '</tbody></table>';
+            document.getElementById('campaignTable').innerHTML = html;
+        }
+        
+        function filterCampaigns(filter) {
+            currentFilter = filter;
+            
+            // Update button states
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            let filtered = allCampaigns;
+            
+            if (filter === 'excellent') filtered = allCampaigns.filter(c => c.acos < 30);
+            else if (filter === 'good') filtered = allCampaigns.filter(c => c.acos >= 30 && c.acos < 45);
+            else if (filter === 'fair') filtered = allCampaigns.filter(c => c.acos >= 45 && c.acos < 60);
+            else if (filter === 'poor') filtered = allCampaigns.filter(c => c.acos >= 60);
+            
+            displayCampaignTable(filtered);
+        }
+        
+        // Search functionality
+        document.addEventListener('DOMContentLoaded', () => {
+            const searchBox = document.getElementById('searchBox');
+            if (searchBox) {
+                searchBox.addEventListener('input', (e) => {
+                    const term = e.target.value.toLowerCase();
+                    const filtered = allCampaigns.filter(c => 
+                        c.campaign_name.toLowerCase().includes(term)
+                    );
+                    displayCampaignTable(filtered);
+                });
+            }
+        });
       
-        // Load data on page load
+        // Load on page load
         window.onload = loadDashboardData;
       
         // Auto-refresh every 5 minutes
