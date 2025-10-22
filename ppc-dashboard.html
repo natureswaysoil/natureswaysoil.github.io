@@ -168,6 +168,29 @@
         .loading {
             animation: pulse 2s infinite;
         }
+
+        .refresh-btn {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 10px 24px;
+            border-radius: 8px;
+            font-size: 0.9em;
+            margin-top: 15px;
+            margin-left: 10px;
+            cursor: pointer;
+            border: none;
+            font-weight: 600;
+            transition: background 0.3s ease;
+        }
+
+        .refresh-btn:hover {
+            background: #5568d3;
+        }
+
+        .refresh-btn:active {
+            background: #4451b8;
+        }
     </style>
 </head>
 <body>
@@ -176,7 +199,8 @@
             <h1>🚀 Amazon PPC Optimizer Dashboard</h1>
             <h2>Nature's Way Soil & Vermicompost LLC</h2>
             <span class="status-badge" id="statusBadge">LIVE ✓</span>
-            <span class="info-badge">📊 Budget-based estimates • Real metrics coming soon</span>
+            <span class="info-badge" id="dataBadge">📊 Live data from BigQuery</span>
+            <button class="refresh-btn" onclick="refreshDashboard()">🔄 Refresh Data</button>
             <p id="connectionStatus" style="margin-top: 15px; color: #666;"></p>
         </div>
 
@@ -229,8 +253,8 @@
                 <thead>
                     <tr>
                         <th>Campaign Name</th>
-                        <th>Spend (Est.)</th>
-                        <th>Sales (Est.)</th>
+                        <th>Spend</th>
+                        <th>Sales</th>
                         <th>ACOS</th>
                         <th>Status</th>
                     </tr>
@@ -258,10 +282,13 @@
 
         async function loadDashboardData() {
             try {
-                document.getElementById('statusBadge').textContent = 'LIVE ✓';
+                // Set loading state
+                document.getElementById('statusBadge').textContent = 'LOADING...';
+                document.getElementById('statusBadge').style.background = '#f59e0b';
                 document.getElementById('connectionStatus').innerHTML = 
-                    '✅ Connected to BigQuery: Syncing from 254 Amazon campaigns';
+                    '🔄 Connecting to BigQuery...';
 
+                // Fetch campaign performance data
                 const campaigns = await queryBigQuery(`
                     SELECT 
                         campaign_name,
@@ -273,26 +300,59 @@
                     ORDER BY total_spend DESC
                 `);
 
-                if (campaigns.length === 0) {
+                if (!campaigns || campaigns.length === 0) {
+                    document.getElementById('statusBadge').textContent = 'NO DATA ⚠';
+                    document.getElementById('statusBadge').style.background = '#f59e0b';
                     document.getElementById('connectionStatus').innerHTML = 
-                        '⚠️ No campaign data found';
+                        '⚠️ Connected to BigQuery but no campaign data found. Please check if the table has been populated.';
+                    document.getElementById('dataBadge').textContent = '📊 Waiting for data';
                     return;
                 }
 
+                // Try to get keyword count from a separate query
+                let totalKeywords = 0;
+                try {
+                    const keywordResult = await queryBigQuery(`
+                        SELECT COUNT(DISTINCT keyword) as keyword_count
+                        FROM \`amazon-ppc-474902.ppc_data.keyword_performance\`
+                    `);
+                    if (keywordResult && keywordResult.length > 0) {
+                        totalKeywords = keywordResult[0].keyword_count || 0;
+                    }
+                } catch (keywordError) {
+                    console.log('Keyword data not available:', keywordError);
+                    // Continue without keyword data
+                }
+
+                // Calculate metrics
                 const totalCampaigns = campaigns.length;
-                const totalSpend = campaigns.reduce((sum, c) => sum + (c.total_spend || 0), 0);
-                const totalSales = campaigns.reduce((sum, c) => sum + (c.total_sales || 0), 0);
+                const totalSpend = campaigns.reduce((sum, c) => sum + (parseFloat(c.total_spend) || 0), 0);
+                const totalSales = campaigns.reduce((sum, c) => sum + (parseFloat(c.total_sales) || 0), 0);
                 const avgAcos = totalSales > 0 ? (totalSpend / totalSales * 100) : 0;
                 const roi = totalSpend > 0 ? ((totalSales - totalSpend) / totalSpend * 100) : 0;
                 const activeCampaigns = campaigns.filter(c => 
                     c.bid_optimization !== 'Paused').length;
 
+                // Update status - success
+                document.getElementById('statusBadge').textContent = 'LIVE ✓';
+                document.getElementById('statusBadge').style.background = '#10b981';
+                const lastUpdate = new Date().toLocaleString();
+                document.getElementById('connectionStatus').innerHTML = 
+                    `✅ Connected to BigQuery • Last updated: ${lastUpdate} • ${totalCampaigns} campaigns loaded`;
+
+                // Update metrics
                 document.getElementById('totalCampaigns').textContent = totalCampaigns;
                 document.getElementById('campaignSubtitle').textContent = 
                     `${activeCampaigns} active campaigns`;
 
-                document.getElementById('totalKeywords').textContent = '0';
-                document.getElementById('keywordSubtitle').textContent = 'Pending sync';
+                if (totalKeywords > 0) {
+                    document.getElementById('totalKeywords').textContent = 
+                        totalKeywords.toLocaleString('en-US');
+                    document.getElementById('keywordSubtitle').textContent = 'Active keywords';
+                } else {
+                    document.getElementById('totalKeywords').textContent = 'N/A';
+                    document.getElementById('keywordSubtitle').textContent = 'Keyword data not available';
+                }
 
                 document.getElementById('avgAcos').textContent = avgAcos.toFixed(2) + '%';
                 document.getElementById('acosSubtitle').innerHTML = 
@@ -300,19 +360,20 @@
                     '<span class="good">✅ On target</span>';
 
                 document.getElementById('totalSpend').textContent = 
-                    '$' + totalSpend.toLocaleString('en-US', {maximumFractionDigits: 2});
-                document.getElementById('spendSubtitle').textContent = 'Est. monthly spend';
+                    '$' + totalSpend.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                document.getElementById('spendSubtitle').textContent = 'Total campaign spend';
 
                 document.getElementById('totalSales').textContent = 
-                    '$' + totalSales.toLocaleString('en-US', {maximumFractionDigits: 2});
+                    '$' + totalSales.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
                 document.getElementById('salesSubtitle').textContent = 
-                    `Profit: $${(totalSales - totalSpend).toLocaleString('en-US', {maximumFractionDigits: 2})}`;
+                    `Profit: $${(totalSales - totalSpend).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
 
                 document.getElementById('roi').textContent = roi.toFixed(1) + '%';
                 document.getElementById('roiSubtitle').innerHTML = 
                     roi > 0 ? '<span class="good">✅ Profitable</span>' : 
                     '<span class="bad">❌ Loss</span>';
 
+                // Render visualizations
                 renderChart(campaigns.slice(0, 15));
                 renderTable(campaigns);
 
@@ -320,35 +381,81 @@
                 console.error('Error loading data:', error);
                 document.getElementById('statusBadge').textContent = 'ERROR ✗';
                 document.getElementById('statusBadge').style.background = '#ef4444';
-                document.getElementById('connectionStatus').innerHTML = 
-                    '❌ Error loading data: ' + error.message;
+                
+                // Provide detailed error information
+                let errorMessage = '❌ Failed to connect to BigQuery. ';
+                if (error.message.includes('Failed to fetch')) {
+                    errorMessage += 'Please check: (1) BigQuery proxy is running, (2) Network connectivity, (3) CORS configuration.';
+                } else if (error.message.includes('401') || error.message.includes('403')) {
+                    errorMessage += 'Authentication error. Please verify BigQuery credentials and permissions.';
+                } else {
+                    errorMessage += 'Error: ' + error.message;
+                }
+                
+                document.getElementById('connectionStatus').innerHTML = errorMessage;
+                document.getElementById('dataBadge').textContent = '📊 Connection failed';
             }
         }
+
+        let chartInstance = null;
 
         function renderChart(campaigns) {
             const ctx = document.getElementById('campaignChart').getContext('2d');
             
-            new Chart(ctx, {
+            // Destroy existing chart instance to prevent memory leaks
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+            
+            chartInstance = new Chart(ctx, {
                 type: 'bar',
                 data: {
-                    labels: campaigns.map(c => c.campaign_name.substring(0, 30) + '...'),
+                    labels: campaigns.map(c => {
+                        const name = c.campaign_name || 'Unknown';
+                        return name.length > 30 ? name.substring(0, 30) + '...' : name;
+                    }),
                     datasets: [
                         {
-                            label: 'Spend (Est.)',
-                            data: campaigns.map(c => c.total_spend),
+                            label: 'Spend',
+                            data: campaigns.map(c => parseFloat(c.total_spend) || 0),
                             backgroundColor: 'rgba(239, 68, 68, 0.7)',
                         },
                         {
-                            label: 'Sales (Est.)',
-                            data: campaigns.map(c => c.total_sales),
+                            label: 'Sales',
+                            data: campaigns.map(c => parseFloat(c.total_sales) || 0),
                             backgroundColor: 'rgba(16, 185, 129, 0.7)',
                         }
                     ]
                 },
                 options: {
                     responsive: true,
+                    maintainAspectRatio: true,
                     scales: {
-                        y: { beginAtZero: true }
+                        y: { 
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return '$' + value.toLocaleString('en-US');
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    label += '$' + context.parsed.y.toLocaleString('en-US', {
+                                        minimumFractionDigits: 2,
+                                        maximumFractionDigits: 2
+                                    });
+                                    return label;
+                                }
+                            }
+                        }
                     }
                 }
             });
@@ -356,21 +463,40 @@
 
         function renderTable(campaigns) {
             const tbody = document.getElementById('campaignTableBody');
-            tbody.innerHTML = campaigns.slice(0, 50).map(c => `
-                <tr>
-                    <td>${c.campaign_name}</td>
-                    <td>$${c.total_spend.toLocaleString('en-US', {maximumFractionDigits: 2})}</td>
-                    <td>$${c.total_sales.toLocaleString('en-US', {maximumFractionDigits: 2})}</td>
-                    <td class="${c.acos > 35 ? 'bad' : 'good'}">${c.acos.toFixed(2)}%</td>
-                    <td class="${c.bid_optimization === 'Paused' ? 'status-paused' : 'status-active'}">
-                        ${c.bid_optimization}
-                    </td>
-                </tr>
-            `).join('');
+            
+            if (!campaigns || campaigns.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #999;">No campaign data available</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = campaigns.slice(0, 50).map(c => {
+                const spend = parseFloat(c.total_spend) || 0;
+                const sales = parseFloat(c.total_sales) || 0;
+                const acos = parseFloat(c.acos) || 0;
+                const status = c.bid_optimization || 'Unknown';
+                
+                return `
+                    <tr>
+                        <td>${c.campaign_name || 'Unknown Campaign'}</td>
+                        <td>$${spend.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                        <td>$${sales.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                        <td class="${acos > 35 ? 'bad' : 'good'}">${acos.toFixed(2)}%</td>
+                        <td class="${status === 'Paused' ? 'status-paused' : 'status-active'}">
+                            ${status}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
         }
 
+        // Initial load
         loadDashboardData();
-        setInterval(loadDashboardData, 7200000); // Refresh every 2 hours
+        
+        // Auto-refresh every 30 minutes for more real-time data
+        setInterval(loadDashboardData, 1800000);
+        
+        // Add manual refresh capability
+        window.refreshDashboard = loadDashboardData;
     </script>
 </body>
 </html>
