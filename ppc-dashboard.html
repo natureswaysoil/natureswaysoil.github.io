@@ -216,6 +216,18 @@
                 <div class="metric-value" id="roi">-</div>
                 <div class="metric-subtitle" id="roiSubtitle">Loading...</div>
             </div>
+
+            <div class="metric-card">
+                <div class="metric-label">Bid Adjustments</div>
+                <div class="metric-value" id="bidAdjustments">-</div>
+                <div class="metric-subtitle" id="bidAdjustmentsSubtitle">Loading...</div>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-label">Dayparting Enabled</div>
+                <div class="metric-value" id="dayparting">-</div>
+                <div class="metric-subtitle" id="daypartingSubtitle">Loading...</div>
+            </div>
         </div>
 
         <div class="chart-container">
@@ -232,11 +244,13 @@
                         <th>Spend (Est.)</th>
                         <th>Sales (Est.)</th>
                         <th>ACOS</th>
+                        <th>Bid Adjustments</th>
+                        <th>Dayparting</th>
                         <th>Status</th>
                     </tr>
                 </thead>
                 <tbody id="campaignTableBody">
-                    <tr><td colspan="5" class="loading">Loading campaign data...</td></tr>
+                    <tr><td colspan="7" class="loading">Loading campaign data...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -268,7 +282,9 @@
                         total_spend,
                         total_sales,
                         acos,
-                        bid_optimization
+                        bid_optimization,
+                        bid_adjustments,
+                        dayparting_schedules
                     FROM \`amazon-ppc-474902.ppc_data.campaign_performance\`
                     ORDER BY total_spend DESC
                 `);
@@ -286,6 +302,19 @@
                 const roi = totalSpend > 0 ? ((totalSales - totalSpend) / totalSpend * 100) : 0;
                 const activeCampaigns = campaigns.filter(c => 
                     c.bid_optimization !== 'Paused').length;
+                
+                // Calculate bid adjustments metrics
+                const campaignsWithBidAdjustments = campaigns.filter(c => 
+                    c.bid_adjustments && c.bid_adjustments !== 'None').length;
+                const bidAdjustmentPercentage = totalCampaigns > 0 ? 
+                    (campaignsWithBidAdjustments / totalCampaigns * 100) : 0;
+                
+                // Calculate dayparting metrics
+                const campaignsWithDayparting = campaigns.filter(c => 
+                    c.dayparting_schedules && c.dayparting_schedules !== 'None' && 
+                    c.dayparting_schedules !== 'Always On').length;
+                const daypartingPercentage = totalCampaigns > 0 ? 
+                    (campaignsWithDayparting / totalCampaigns * 100) : 0;
 
                 document.getElementById('totalCampaigns').textContent = totalCampaigns;
                 document.getElementById('campaignSubtitle').textContent = 
@@ -312,6 +341,16 @@
                 document.getElementById('roiSubtitle').innerHTML = 
                     roi > 0 ? '<span class="good">✅ Profitable</span>' : 
                     '<span class="bad">❌ Loss</span>';
+
+                document.getElementById('bidAdjustments').textContent = 
+                    campaignsWithBidAdjustments;
+                document.getElementById('bidAdjustmentsSubtitle').textContent = 
+                    `${bidAdjustmentPercentage.toFixed(1)}% of campaigns`;
+
+                document.getElementById('dayparting').textContent = 
+                    campaignsWithDayparting;
+                document.getElementById('daypartingSubtitle').textContent = 
+                    `${daypartingPercentage.toFixed(1)}% of campaigns`;
 
                 renderChart(campaigns.slice(0, 15));
                 renderTable(campaigns);
@@ -362,6 +401,8 @@
                     <td>$${c.total_spend.toLocaleString('en-US', {maximumFractionDigits: 2})}</td>
                     <td>$${c.total_sales.toLocaleString('en-US', {maximumFractionDigits: 2})}</td>
                     <td class="${c.acos > 35 ? 'bad' : 'good'}">${c.acos.toFixed(2)}%</td>
+                    <td>${c.bid_adjustments || 'None'}</td>
+                    <td>${c.dayparting_schedules || 'Always On'}</td>
                     <td class="${c.bid_optimization === 'Paused' ? 'status-paused' : 'status-active'}">
                         ${c.bid_optimization}
                     </td>
